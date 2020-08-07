@@ -1,0 +1,58 @@
+name:                be-challenge
+version:             0.1.0.0
+github:              "angelpopov/be-challenge"
+license:             BSD3
+author:              "Angel Popov"
+maintainer:          "angelpopov@yahoo.com"
+copyright:           "na"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            hello
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/angelpopov/be-challenge#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- aeson
+- servant-server
+- wai
+- warp
+- text
+- utf8-string
+library:
+  source-dirs: src
+
+executables:
+  be-challenge-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - be-challenge
+
+tests:
+  be-challenge-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - be-challenge
+    - hspec
+    - hspec-wai
+    - hspec-wai-json
+    - aeson
