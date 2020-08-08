@@ -22,10 +22,20 @@ dependencies:
 - base >= 4.7 && < 5
 - aeson
 - servant-server
+- servant-client
 - wai
 - warp
+- http-types
+- http-client
 - text
 - utf8-string
+- postgresql-simple
+- resource-pool
+- bytestring
+- time
+- string-interpolate
+- raven-haskell
+
 library:
   source-dirs: src
 

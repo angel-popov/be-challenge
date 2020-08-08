@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 03791beef8c090c68557fdbbd3e7a5d67bf8259d398277c0b923faa85fd72446
+-- hash: b9deb9e5af393b67affa20670013950cb47ea62b3abfe36fa58a244901ab2498
 
 name:           be-challenge
 version:        0.1.0.0
@@ -36,8 +36,17 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , bytestring
+    , http-client
+    , http-types
+    , postgresql-simple
+    , raven-haskell
+    , resource-pool
+    , servant-client
     , servant-server
+    , string-interpolate
     , text
+    , time
     , utf8-string
     , wai
     , warp
@@ -54,8 +63,17 @@ executable be-challenge-exe
       aeson
     , base
     , be-challenge
+    , bytestring
+    , http-client
+    , http-types
+    , postgresql-simple
+    , raven-haskell
+    , resource-pool
+    , servant-client
     , servant-server
+    , string-interpolate
     , text
+    , time
     , utf8-string
     , wai
     , warp
@@ -73,11 +91,20 @@ test-suite be-challenge-test
       aeson
     , base
     , be-challenge
+    , bytestring
     , hspec
     , hspec-wai
     , hspec-wai-json
+    , http-client
+    , http-types
+    , postgresql-simple
+    , raven-haskell
+    , resource-pool
+    , servant-client
     , servant-server
+    , string-interpolate
     , text
+    , time
     , utf8-string
     , wai
     , warp

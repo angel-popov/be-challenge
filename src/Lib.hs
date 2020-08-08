@@ -1,49 +1,126 @@
-{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies, DataKinds,
+  DeriveGeneric, TypeOperators, RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators   #-}
-{-# LANGUAGE OverloadedStrings       #-}
-module Lib
-    ( startApp
-    , testApp
-    ) where
+{-# LANGUAGE QuasiQuotes #-}
 
-import Data.Aeson
-import Data.Aeson.TH
+module Lib where
+
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
 import Rentals
-import Data.ByteString.Lazy.UTF8
+import Data.String.Interpolate ( i, iii )
 
-type API = -- "rentals" :> Get '[JSON] [Rental] :<|>
-           "rentals" :> Capture "rentalId" Integer :> Get '[JSON] Rental :<|>
-           "rentals" :> QueryParams "price" Integer :> QueryParam "pricemin" Integer :> QueryParam "pricemax" Integer :> Get '[JSON] [Rental]
+import qualified DB as DB
+import Data.Pool
+import Database.PostgreSQL.Simple
+import Control.Monad.IO.Class
+import qualified Data.List as L
+import Data.ByteString.Lazy.UTF8 (fromString)
+
+import qualified Data.Text as T
+import Data.Text.Read
+import Text.Read
+data Coords = Coords Double Double deriving Show
+instance ToHttpApiData Coords where
+  toQueryParam (Coords lat lng) = [i|#{lat},#{lng}|]
+instance FromHttpApiData Coords where
+  parseQueryParam param =
+    let first = T.takeWhile (/=',') param
+        second = T.drop 1 $ T.dropWhile (/=',') param in
+    case Coords<$>(fst <$> (rational first)) <*> (fst <$> (rational second)) of
+      (Right r) -> Right r
+      (Left err) -> (Left $ [i|Failed to parse coords #{param} lat:'#{first}' long:'#{second}' #{err}|])
+
+data RentIds = RentIds [Integer] deriving Show
+instance ToHttpApiData RentIds where
+  toQueryParam (RentIds ids) = T.intercalate "," $ (T.pack . show) <$> ids
+instance FromHttpApiData RentIds where
+  parseQueryParam param = 
+    case RentIds <$> readEither ( "[" ++ T.unpack param ++ "]") of
+      (Right r) -> Right r
+      (Left err) -> (Left $ [i|Failed to parse ids from #{param} - #{err}|])
+
+type API = 
+           "rentals" :> Capture "rentalId" Integer :> Get '[JSON] RentalInfo :<|>
+           "rentals" :> QueryParam "pricemin" Integer :> QueryParam "pricemax" Integer
+                     :> QueryParam "pagelimit" Integer :> QueryParam "pageoffset" Integer
+                     :> QueryParam "sort" String
+                     :> QueryParam "ids" RentIds :> QueryParam "near" Coords
+                     :> Get '[JSON] [Rental]
 
 startApp :: IO ()
-startApp = run 8080 testApp
+startApp = do
+  c <- DB.initConnectionPool ""
+  run 8080 $ testApp c
 
-testApp :: Application
-testApp = serve api testServer
+
+testApp :: Pool Connection -> Application
+testApp c = serve api $ testServer c
 
 api :: Proxy API
 api = Proxy
 
-testServer :: Server API
-testServer = rental :<|>
-         rentalByPrice
+data ServerState = ServerState{
+  conns :: Pool Connection
+  }
 
-rentalByPrice :: [Integer] -> Maybe Integer -> Maybe Integer-> Handler [Rental]
-rentalByPrice [] Nothing Nothing = return rentals
-rentalByPrice (form:[to]) Nothing Nothing = return []
-rentalByPrice (form:[]) Nothing Nothing = return []
-rentalByPrice [] (Just from) Nothing = return []
-rentalByPrice [] Nothing (Just to) = return []
-rentalByPrice [] (Just from) (Just to) = return []
-rentalByPrice price minPrice maxPrice = throwError err400 {errBody= "Invalid parameters:" <> fromString (show price ++ "" ++ " " ++ show minPrice ++ " " ++ show maxPrice)}
+testServer :: Pool Connection -> Server API
+testServer conns =
+  rental conns :<|>
+  rentals conns
 
-rental :: Integer -> Handler Rental
-rental 1 = return defRental
-rental n = throwError $ err404 { errBody= "Rental Not Found"}
+composeQuery :: Maybe Integer -> Maybe Integer -> Maybe Integer -> Maybe Integer -> Maybe String -> Maybe RentIds -> Maybe Coords -> String
+composeQuery pricemin pricemax offset limit sort ids near =
+  let condPart = concat [priceMinMax pricemin pricemax, some ids, nearBy near]
+      wherePart = if condPart==[] then "" else ("where " ++ L.intercalate " and " condPart) in
+    [iii|select * from rentals #{wherePart}
+        #{orderBy sort}
+        #{limitOffset limit offset} |]
+    where
+      priceMinMax :: Maybe Integer -> Maybe Integer -> [String]
+      priceMinMax Nothing Nothing = []
+      priceMinMax (Just pmin) Nothing = ["price_per_day <= " ++ show pmin]
+      priceMinMax Nothing (Just pmax) = ["price_per_day >= " ++ show pmax]
+      priceMinMax (Just pmin) (Just pmax) = ["price_per_day BETWEEN " ++ show pmin
+                                            ++" and " ++ show pmax]
+      some :: Maybe RentIds -> [String]
+      some Nothing = []
+      some (Just (RentIds ids_)) = ["id in (" ++ L.intercalate "," (show <$> ids_) ++ ")"]
+      nearBy :: Maybe Coords -> [String]
+      nearBy Nothing = []
+      nearBy (Just (Coords lng lat)) = [[i|(point(#{lng}, #{lat}) <@> point(lng, lat)) < 100|]]
+      orderBy :: Maybe String -> String
+      orderBy (Just "price") = "order by price_per_day"
+      orderBy _ = "order by id"
+      limitOffset :: Maybe Integer -> Maybe Integer -> String
+      limitOffset Nothing Nothing = ""
+      limitOffset Nothing (Just offs) =  [i|offset #{offs}|] 
+      limitOffset (Just lim) Nothing =   [i|limit #{lim}|]
+      limitOffset (Just lim) (Just offs) = [i|offset #{offs} limit #{lim}|]
+  
+rentals ::  Pool Connection -> Maybe Integer -> Maybe Integer -> Maybe Integer -> Maybe Integer -> Maybe String -> Maybe RentIds -> Maybe Coords -> Handler [Rental]
+rentals c pricemin pricemax
+       offset limit
+       sort
+       ids near = do
+  let sqlQ = composeQuery pricemin pricemax offset limit sort ids near
+  liftIO $ putStrLn sqlQ
+  res <-liftIO $ DB.selectRentals c sqlQ
+  case res of
+    Right filtered -> return filtered
+    Left err -> do
+      liftIO $ putStrLn sqlQ
+      liftIO $ print err
+      throwError $ err500 { errBody = fromString $ show err }
 
-rentals :: [Rental]
-rentals = [ (defRental{_id=2}), defRental ]
+rental :: Pool Connection -> Integer -> Handler RentalInfo
+rental c n = do
+  res <-liftIO $ DB.getRental c n
+  case res of
+    Right ([rent], urls) -> return $ RentalInfo rent $ concat urls
+    Right ([],[]) -> throwError $ err400 {errBody = "RentalId not found"}
+    Right ([],(_:_)) -> throwError $ err500 {errBody = "RentalId not found, but there are pictures of it."}
+    Right ((_:_:_),_) -> throwError $ err500 {errBody = "More than one item with that rentalId is found."}
+    Left err -> do
+      throwError $ err500 { errBody = fromString $ show err }

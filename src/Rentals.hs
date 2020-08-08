@@ -5,6 +5,14 @@ module Rentals where
 import Data.Text
 import Data.Aeson
 import GHC.Generics
+import Database.PostgreSQL.Simple (FromRow)
+import Data.Time.Clock
+import Data.Time.Calendar
+
+data RentalInfo = RentalInfo{
+  item :: Rental,
+  picts :: [Text]
+  }deriving (Eq, Generic, Show, FromJSON, ToJSON)
 
 data Rental = Rental{
   _id :: Integer,
@@ -21,15 +29,16 @@ data Rental = Rental{
   _vehicle_make :: Text,
   _vehicle_model :: Text,
   _vehicle_year :: Integer,
-  _vehicle_length :: Double,
-  _created :: Integer,
-  _updated :: Integer,
+  _vehicle_length :: Rational,
+  _created :: UTCTime,
+  _updated :: UTCTime,
   _lat :: Double,
   _lng :: Double,
   _primary_image_url :: Text,
   _owner_name :: Text,
   _owner_avatar_url :: Text
-  } deriving (Generic, Show, FromJSON, ToJSON)
+  } deriving (Eq, Generic, Show, FromJSON, ToJSON, FromRow)
+
 defRental :: Rental
 defRental = Rental{
   _id = 1,
@@ -47,8 +56,8 @@ defRental = Rental{
   _vehicle_model = "_vehicle_model",
   _vehicle_year = 2019,
   _vehicle_length = 2.3,
-  _created = 1000,
-  _updated = 10000,
+  _created = UTCTime (ModifiedJulianDay 1000) 10,
+  _updated = UTCTime (ModifiedJulianDay 1000) 10,
   _lat = 10.10,
   _lng = 20.20,
   _primary_image_url = "_primary_image_url",
