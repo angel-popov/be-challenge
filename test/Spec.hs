@@ -14,7 +14,7 @@ import qualified Rentals as R
 import           Network.Wai
 import qualified Network.Wai.Handler.Warp         as Warp
 import           GHC.Generics
-
+import           Control.Exception
 import           Servant
 import           Servant.Client
 import           Servant.Server
@@ -37,7 +37,7 @@ rentalByPriceSpec =
     -- `around` will start our Server before the tests and turn it off after
     around withTestApp $ do
       -- create a test client function
-      let rental :<|> rentals = client (Proxy :: Proxy API)
+      let rental :<|> rentals :<|> crash = client (Proxy :: Proxy API)
       let rentalByPrice = \from to -> rentals from to Nothing Nothing Nothing Nothing Nothing
       -- create a servant-client ClientEnv
       baseUrl <- runIO $ parseBaseUrl "http://localhost"
@@ -61,7 +61,7 @@ rentalByPageSpec =
     -- `around` will start our Server before the tests and turn it off after
     around withTestApp $ do
       -- create a test client function
-      let rental :<|> rentals = client (Proxy :: Proxy API)
+      let rental :<|> rentals :<|> crash = client (Proxy :: Proxy API)
       let rentalByPage = \offset limit -> rentals Nothing Nothing  offset limit Nothing Nothing Nothing
       -- create a servant-client ClientEnv
       baseUrl <- runIO $ parseBaseUrl "http://localhost"
@@ -89,7 +89,7 @@ rentalSorted =
     -- `around` will start our Server before the tests and turn it off after
     around withTestApp $ do
       -- create a test client function
-      let rental :<|> rentals = client (Proxy :: Proxy API)
+      let rental :<|> rentals :<|> crash = client (Proxy :: Proxy API)
       --                                          pricemin pricemax offset limit    sort  ids     near
       let rentalSort = \price ids -> rentals Nothing  Nothing  Nothing Nothing price ids Nothing
       -- create a servant-client ClientEnv
@@ -116,7 +116,7 @@ rentalNearby =
     -- `around` will start our Server before the tests and turn it off after
     around withTestApp $ do
       -- create a test client function
-      let rental :<|> rentals = client (Proxy :: Proxy API)
+      let rental :<|> rentals :<|> crash = client (Proxy :: Proxy API)
       --                                  pricemin pricemax offset limit    sort    ids     near
       let rentalNear = \coords -> rentals Nothing  Nothing  Nothing Nothing Nothing Nothing coords
       -- create a servant-client ClientEnv
@@ -138,7 +138,7 @@ rentalCamper =
     -- `around` will start our Server before the tests and turn it off after
     around withTestApp $ do
       -- create a test client function
-      let rental :<|> rentals = client (Proxy :: Proxy API)
+      let rental :<|> rentals :<|> crash = client (Proxy :: Proxy API)
       -- create a servant-client ClientEnv
       baseUrl <- runIO $ parseBaseUrl "http://localhost"
       manager <- runIO $ newManager defaultManagerSettings

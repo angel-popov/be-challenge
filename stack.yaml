@@ -39,7 +39,8 @@ packages:
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
-# extra-deps: []
+extra-deps:
+- raven-haskell-0.1.4.0@sha256:64eca8650d140fc853a951af0cf4e2ce255b90491b9e3014d82be2e79593c43a,1251
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
