@@ -18,12 +18,20 @@ CREATE EXTENSION earthdistance;
 
 ## install build env
 curl -sSL https://get.haskellstack.org/ | sh
+stack setup
+stack build
+stack run
 
+running tests with:
+stack test
 
+## installing datadog agent
+DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=bc4ca8e72ee60ce180b9b0d5bbb10feb DD_SITE="datadoghq.com" bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh)"
 
-Start pgsql server locally:
-/usr/lib/postgresql/10/bin/pg_ctl -D /var/lib/postgresql/10/main -l logfile start
-sudo -u postgres /usr/lib/postgresql/10/bin/pg_ctl -D /etc/postgresql/10/main/ -l logfile start
+## testing:
 
-* testing for crash event - /crash
-* 
+deployed on 18.224.55.167
+
+* testing for crash event - curl http://18224.55.167/crash
+  reports are sent to
+* logs are sent to dataloghq's agent installed on the server machine

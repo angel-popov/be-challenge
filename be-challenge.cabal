@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6642d62f3db119c415524fd7c802c392bc3f95062050cfc18678c2d865bbf9a4
+-- hash: 6ae15ebbaed3a151b9c194c78817a592a77813138cced29bfb7b5454ae81e21b
 
 name:           be-challenge
 version:        0.1.0.0
@@ -43,8 +43,6 @@ library
     , http-client
     , http-conduit
     , http-types
-    , monad-control
-    , mtl
     , postgresql-simple
     , random
     , raven-haskell
@@ -75,8 +73,6 @@ executable be-challenge-exe
     , http-client
     , http-conduit
     , http-types
-    , monad-control
-    , mtl
     , postgresql-simple
     , random
     , raven-haskell
@@ -111,8 +107,6 @@ test-suite be-challenge-test
     , http-client
     , http-conduit
     , http-types
-    , monad-control
-    , mtl
     , postgresql-simple
     , random
     , raven-haskell
