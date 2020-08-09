@@ -17,26 +17,13 @@ import Database.PostgreSQL.Simple
 import Control.Monad.IO.Class
 import qualified Data.List as L
 import Data.ByteString.Lazy.UTF8 (fromString)
-import qualified Data.ByteString.UTF8 as C (toString)
-import Control.Exception (Exception, SomeException, throw)
-
-
-import Network.Wai                            (Request, rawPathInfo,
-                                               requestHeaderHost)
-import Network.Wai.Handler.Warp               (defaultOnException,
-                                                defaultSettings,
-                                                runSettings,
-                                                setOnException,
-                                                setPort)
-import System.Log.Raven                       (initRaven, register,
-                                               silentFallback)
-import System.Log.Raven.Transport.HttpConduit (sendRecord)
-import System.Log.Raven.Types                 (SentryLevel (Error),
-                                               SentryRecord (..))
+import Control.Exception (Exception, throw)
 
 import qualified Data.Text as T
 import Data.Text.Read
 import Text.Read
+import Sentry (sentryOnException)
+
 data Coords = Coords Double Double deriving Show
 instance ToHttpApiData Coords where
   toQueryParam (Coords lat lng) = [i|#{lat},#{lng}|]
@@ -74,34 +61,6 @@ startApp =
         defaultSettings in do
     c <- DB.initConnectionPool ""
     runSettings settings $ serve (Proxy :: Proxy API) (testServer c)
-
-sentryOnException :: Maybe Request -> SomeException -> IO()
-sentryOnException mRequest exception = do
-  sentryService <- initRaven
-    "https://29f3f50ca0fa4aff84252aaaf2712123@o431619.ingest.sentry.io/5383215"
-    id
-    sendRecord
-    silentFallback
-  register
-    sentryService
-    "rentaLogger"
-    Error
-    (formatMessage mRequest exception)
-    (recordUpdate mRequest exception)
-  defaultOnException mRequest exception
-
-recordUpdate :: Maybe Request -> SomeException -> SentryRecord -> SentryRecord
-recordUpdate Nothing _exception record        = record
-recordUpdate (Just request) _exception record = record
-  { srCulprit = Just $ C.toString $ rawPathInfo request
-  , srServerName = fmap C.toString $ requestHeaderHost request
-  }
-  
-formatMessage :: Maybe Request -> SomeException -> String
-formatMessage Nothing exception        = "Exception before request could be parsed: " ++ show exception
-formatMessage (Just request) exception = "Exception " ++ show exception ++ " while handling request " ++ show request
-
-
 
 
 testApp :: Pool Connection -> Application
