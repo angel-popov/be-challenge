@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 88218372fcf4dbeffbd437798c37d4a5d66ac15e955f0cc8e8da3a0d3a0a5276
+-- hash: 6642d62f3db119c415524fd7c802c392bc3f95062050cfc18678c2d865bbf9a4
 
 name:           be-challenge
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
       Lib
       Rentals
       Sentry
+      Tracing
   other-modules:
       Paths_be_challenge
   hs-source-dirs:
@@ -38,9 +39,14 @@ library
       aeson
     , base >=4.7 && <5
     , bytestring
+    , clock
     , http-client
+    , http-conduit
     , http-types
+    , monad-control
+    , mtl
     , postgresql-simple
+    , random
     , raven-haskell
     , resource-pool
     , servant-client
@@ -65,9 +71,14 @@ executable be-challenge-exe
     , base
     , be-challenge
     , bytestring
+    , clock
     , http-client
+    , http-conduit
     , http-types
+    , monad-control
+    , mtl
     , postgresql-simple
+    , random
     , raven-haskell
     , resource-pool
     , servant-client
@@ -93,12 +104,17 @@ test-suite be-challenge-test
     , base
     , be-challenge
     , bytestring
+    , clock
     , hspec
     , hspec-wai
     , hspec-wai-json
     , http-client
+    , http-conduit
     , http-types
+    , monad-control
+    , mtl
     , postgresql-simple
+    , random
     , raven-haskell
     , resource-pool
     , servant-client

@@ -23,6 +23,7 @@ import qualified Data.Text as T
 import Data.Text.Read
 import Text.Read
 import Sentry (sentryOnException)
+import Tracing
 
 data Coords = Coords Double Double deriving Show
 instance ToHttpApiData Coords where
@@ -45,8 +46,8 @@ instance FromHttpApiData RentIds where
       (Left err) -> (Left $ [i|Failed to parse ids from #{param} - #{err}|])
 
 type API = 
-           "rentals" :> Capture "rentalId" Integer :> Get '[JSON] RentalInfo :<|>
-           "rentals" :> QueryParam "pricemin" Integer :> QueryParam "pricemax" Integer
+           "campervans" :> Capture "rentalId" Integer :> Get '[JSON] RentalInfo :<|>
+           "campervans" :> QueryParam "pricemin" Integer :> QueryParam "pricemax" Integer
                      :> QueryParam "pagelimit" Integer :> QueryParam "pageoffset" Integer
                      :> QueryParam "sort" String
                      :> QueryParam "ids" RentIds :> QueryParam "near" Coords
@@ -115,18 +116,20 @@ rentals c pricemin pricemax
        sort
        ids near = do
   let sqlQ = composeQuery pricemin pricemax offset limit sort ids near
-  liftIO $ putStrLn sqlQ
-  res <-liftIO $ DB.selectRentals c sqlQ
+  
+  
+  res <- liftIO $ report (DB.selectRentals c sqlQ ) sqlQ "campervans" "be-challenge"
   case res of
     Right filtered -> return filtered
     Left err -> do
       liftIO $ putStrLn sqlQ
       liftIO $ print err
       throwError $ err500 { errBody = fromString $ show err }
+    
 
 rental :: Pool Connection -> Integer -> Handler RentalInfo
 rental c n = do
-  res <-liftIO $ DB.getRental c n
+  res <-liftIO $ report (DB.getRental c n) ("Get Item:"++show n) "campervans" "be-challenge"
   case res of
     Right ([rent], urls) -> return $ RentalInfo rent $ concat urls
     Right ([],[]) -> throwError $ err400 {errBody = "RentalId not found"}

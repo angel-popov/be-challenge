@@ -35,6 +35,9 @@ dependencies:
 - time
 - string-interpolate
 - raven-haskell
+- http-conduit
+- clock
+- random
 
 library:
   source-dirs: src
