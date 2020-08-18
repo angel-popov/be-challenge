@@ -18,7 +18,7 @@ instance FromHttpApiData Coords where
   parseQueryParam param =
     let first = T.takeWhile (/=',') param
         second = T.drop 1 $ T.dropWhile (/=',') param in
-    case (,) <$>((Long . fst) <$> (rational first)) <*> ((Latt . fst) <$> (rational second)) of
+    case (,) <$>((Long . fst) <$> (rational second)) <*> ((Latt . fst) <$> (rational first)) of
       (Right r) -> Right $ Coords r
       (Left err) -> (Left $ [i|Failed to parse coords #{param} long:'#{first}' latt:'#{second}' #{err}|])
 

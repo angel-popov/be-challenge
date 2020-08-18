@@ -37,7 +37,7 @@ deployed on 18.224.55.167
 curl http://18.224.55.167:8080/campervans?pageoffset=1
 curl http://18.224.55.167:8080/campervans?pricemin=9000
 curl 'http://18.224.55.167:8080/campervans?pricemin=9000&pagelimit=1'
-curl 'http://18.224.55.167:8080/campervans?near=33.64,-117.93' - note that it is long,lat
+curl 'http://18.224.55.167:8080/campervans?near=33.64,-117.93' - note that it is latt,long
 
 
 * logs are sent to dataloghq's agent installed on the server machine
