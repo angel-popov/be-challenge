@@ -20,7 +20,7 @@ import           Servant.Client
 import           Servant.Server
 import           Network.HTTP.Client       hiding (Proxy)
 import           Network.HTTP.Types
-
+import           Params
 main :: IO ()
 main = do
   hspec spec
@@ -47,13 +47,13 @@ rentalByPriceSpec =
       -- testing scenarios start here
       describe "Filter by price" $ do
         it "should give no users in low price interval" $ \port -> do
-          result <- runClientM (rentalByPrice (Just 1) (Just 3)) (clientEnv port)
+          result <- runClientM (rentalByPrice (Just (PriceMin 1)) (Just (PriceMax 3))) (clientEnv port)
           result `shouldBe` (Right [])
         it "should give one user in interval 1-3000" $ \port -> do
-          result <- runClientM (rentalByPrice (Just 1) (Just 3000)) (clientEnv port)
+          result <- runClientM (rentalByPrice (Just (PriceMin 1)) (Just (PriceMax 3000))) (clientEnv port)
           length <$> result `shouldBe` (Right 1)
         it "should give 30 users in max interval" $ \port -> do
-          result <- runClientM (rentalByPrice (Just 1) (Just 300000)) (clientEnv port)
+          result <- runClientM (rentalByPrice (Just (PriceMin 1)) (Just (PriceMax 300000))) (clientEnv port)
           length <$> result `shouldBe` (Right 30)
           
 rentalByPageSpec :: Spec
@@ -62,7 +62,7 @@ rentalByPageSpec =
     around withTestApp $ do
       -- create a test client function
       let rental :<|> rentals :<|> crash = client (Proxy :: Proxy API)
-      let rentalByPage = \offset limit -> rentals Nothing Nothing  offset limit Nothing Nothing Nothing
+      let rentalByPage = \offset limit -> rentals Nothing Nothing  limit offset Nothing Nothing Nothing
       -- create a servant-client ClientEnv
       baseUrl <- runIO $ parseBaseUrl "http://localhost"
       manager <- runIO $ newManager defaultManagerSettings
@@ -70,19 +70,19 @@ rentalByPageSpec =
 
       describe "Filter by page" $ do
         it "should give one user with offset = 1 limit=1" $ \port -> do
-          result <- runClientM (rentalByPage (Just 1) (Just 1)) (clientEnv port)
+          result <- runClientM (rentalByPage (Just (PageOffset 1)) (Just (PageLimit 1))) (clientEnv port)
           length <$> result `shouldBe` (Right 1)
       describe "Filter by page" $ do
         it "should give 13 users with limit 13" $ \port -> do
-          result <- runClientM (rentalByPage (Just 1) (Just 13)) (clientEnv port)
+          result <- runClientM (rentalByPage (Just (PageOffset 1)) (Just (PageLimit 13))) (clientEnv port)
           length <$> result `shouldBe` (Right 13)
       describe "Filter by page" $ do
         it "should give 10 users with limit 13 and offset 20" $ \port -> do
-          result <- runClientM (rentalByPage (Just 20) (Just 13)) (clientEnv port)
+          result <- runClientM (rentalByPage (Just (PageOffset 20)) (Just (PageLimit 13))) (clientEnv port)
           length <$> result `shouldBe` (Right 10)
       describe "Filter by page" $ do
         it "should give 29 users in with limit 100 and offset 1" $ \port -> do
-          result <- runClientM (rentalByPage (Just 1) (Just 100)) (clientEnv port)
+          result <- runClientM (rentalByPage (Just (PageOffset 1)) (Just (PageLimit 100))) (clientEnv port)
           length <$> result `shouldBe` (Right 29)
 rentalSorted :: Spec
 rentalSorted =
@@ -126,11 +126,11 @@ rentalNearby =
 
       describe "Nearby" $ do
         it "should give all nearby items" $ \port -> do
-          result <- runClientM (rentalNear (Just $ Coords (-117.93) 33.64)) (clientEnv port)
+          result <- runClientM (rentalNear (Just $ Coords (Long $ -117.93,Latt 33.64))) (clientEnv port)
           length <$> result `shouldBe` (Right 6)
           (((\R.Rental{..}->(_id,_price_per_day)) <$>).take 1) <$> result `shouldBe` (Right [(4447,16900)])
         it "should give all nearby items" $ \port -> do
-          result <- runClientM (rentalNear (Just $ Coords 33.64 (-117.93) )) (clientEnv port)
+          result <- runClientM (rentalNear (Just $ Coords (Long 33.64,Latt $ -117.93))) (clientEnv port)
           length <$> result `shouldBe` (Right 0)
 
 rentalCamper :: Spec

@@ -24,31 +24,12 @@ import Data.Text.Read
 import Text.Read
 import Sentry (sentryOnException)
 import Tracing
-
-data Coords = Coords Double Double deriving Show
-instance ToHttpApiData Coords where
-  toQueryParam (Coords lat lng) = [i|#{lat},#{lng}|]
-instance FromHttpApiData Coords where
-  parseQueryParam param =
-    let first = T.takeWhile (/=',') param
-        second = T.drop 1 $ T.dropWhile (/=',') param in
-    case Coords<$>(fst <$> (rational first)) <*> (fst <$> (rational second)) of
-      (Right r) -> Right r
-      (Left err) -> (Left $ [i|Failed to parse coords #{param} lat:'#{first}' long:'#{second}' #{err}|])
-
-data RentIds = RentIds [Integer] deriving Show
-instance ToHttpApiData RentIds where
-  toQueryParam (RentIds ids) = T.intercalate "," $ (T.pack . show) <$> ids
-instance FromHttpApiData RentIds where
-  parseQueryParam param = 
-    case RentIds <$> readEither ( "[" ++ T.unpack param ++ "]") of
-      (Right r) -> Right r
-      (Left err) -> (Left $ [i|Failed to parse ids from #{param} - #{err}|])
+import Params
 
 type API = 
            "campervans" :> Capture "rentalId" Integer :> Get '[JSON] RentalInfo :<|>
-           "campervans" :> QueryParam "pricemin" Integer :> QueryParam "pricemax" Integer
-                     :> QueryParam "pagelimit" Integer :> QueryParam "pageoffset" Integer
+           "campervans" :> QueryParam "pricemin" PriceMin :> QueryParam "pricemax" PriceMax
+                     :> QueryParam "pagelimit" PageLimit :> QueryParam "pageoffset" PageOffset
                      :> QueryParam "sort" String
                      :> QueryParam "ids" RentIds :> QueryParam "near" Coords
                      :> Get '[JSON] [Rental] :<|>
@@ -62,7 +43,6 @@ startApp =
         defaultSettings in do
     c <- DB.initConnectionPool ""
     runSettings settings $ serve (Proxy :: Proxy API) (testServer c)
-
 
 testApp :: Pool Connection -> Application
 testApp c = serve api $ testServer c
@@ -81,36 +61,36 @@ instance Exception MyException
 crashMe :: Handler String
 crashMe = throw MyException >> return "ok"
 
-composeQuery :: Maybe Integer -> Maybe Integer -> Maybe Integer -> Maybe Integer -> Maybe String -> Maybe RentIds -> Maybe Coords -> String
-composeQuery pricemin pricemax offset limit sort ids near =
+composeQuery :: Maybe PriceMin -> Maybe PriceMax -> Maybe PageLimit -> Maybe PageOffset -> Maybe String -> Maybe RentIds -> Maybe Coords -> String
+composeQuery pricemin pricemax limit offset sort ids near =
   let condPart = concat [priceMinMax pricemin pricemax, some ids, nearBy near]
       wherePart = if condPart==[] then "" else ("where " ++ L.intercalate " and " condPart) in
     [iii|select * from rentals #{wherePart}
         #{orderBy sort}
         #{limitOffset limit offset} |]
     where
-      priceMinMax :: Maybe Integer -> Maybe Integer -> [String]
+      priceMinMax :: Maybe PriceMin -> Maybe PriceMax -> [String]
       priceMinMax Nothing Nothing = []
-      priceMinMax (Just pmin) Nothing = ["price_per_day <= " ++ show pmin]
-      priceMinMax Nothing (Just pmax) = ["price_per_day >= " ++ show pmax]
-      priceMinMax (Just pmin) (Just pmax) = ["price_per_day BETWEEN " ++ show pmin
+      priceMinMax (Just (PriceMin pmin)) Nothing = ["price_per_day >= " ++ show pmin]
+      priceMinMax Nothing (Just (PriceMax pmax)) = ["price_per_day <= " ++ show pmax]
+      priceMinMax (Just (PriceMin pmin)) (Just (PriceMax pmax)) = ["price_per_day BETWEEN " ++ show pmin
                                             ++" and " ++ show pmax]
       some :: Maybe RentIds -> [String]
       some Nothing = []
       some (Just (RentIds ids_)) = ["id in (" ++ L.intercalate "," (show <$> ids_) ++ ")"]
       nearBy :: Maybe Coords -> [String]
       nearBy Nothing = []
-      nearBy (Just (Coords lng lat)) = [[i|(point(#{lng}, #{lat}) <@> point(lng, lat)) < 100|]]
+      nearBy (Just (Coords ((Long lng), (Latt lat)))) = [[i|(point(#{lng}, #{lat}) <@> point(lng, lat)) < 100|]]
       orderBy :: Maybe String -> String
       orderBy (Just "price") = "order by price_per_day"
       orderBy _ = "order by id"
-      limitOffset :: Maybe Integer -> Maybe Integer -> String
+      limitOffset :: Maybe PageLimit -> Maybe PageOffset -> String
       limitOffset Nothing Nothing = ""
-      limitOffset Nothing (Just offs) =  [i|offset #{offs}|] 
-      limitOffset (Just lim) Nothing =   [i|limit #{lim}|]
-      limitOffset (Just lim) (Just offs) = [i|offset #{offs} limit #{lim}|]
+      limitOffset Nothing (Just (PageOffset offs)) =  [i|offset #{offs}|] 
+      limitOffset (Just (PageLimit lim)) Nothing =   [i|limit #{lim}|]
+      limitOffset (Just (PageLimit lim)) (Just (PageOffset offs)) = [i|offset #{offs} limit #{lim}|]
   
-rentals ::  Pool Connection -> Maybe Integer -> Maybe Integer -> Maybe Integer -> Maybe Integer -> Maybe String -> Maybe RentIds -> Maybe Coords -> Handler [Rental]
+rentals ::  Pool Connection -> Maybe PriceMin -> Maybe PriceMax -> Maybe PageLimit -> Maybe PageOffset -> Maybe String -> Maybe RentIds -> Maybe Coords -> Handler [Rental]
 rentals c pricemin pricemax
        offset limit
        sort

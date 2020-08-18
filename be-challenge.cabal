@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6ae15ebbaed3a151b9c194c78817a592a77813138cced29bfb7b5454ae81e21b
+-- hash: bb743317a530407bf99bfc7d97ec25e2df15ab1c85586da8fc09b66ac5bc1b58
 
 name:           be-challenge
 version:        0.1.0.0
@@ -28,6 +28,7 @@ library
   exposed-modules:
       DB
       Lib
+      Params
       Rentals
       Sentry
       Tracing
