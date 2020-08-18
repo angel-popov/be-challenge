@@ -34,4 +34,10 @@ deployed on 18.224.55.167
 
 * testing for crash event - curl http://18.224.55.167/crash
   reports are sent to
+curl http://18.224.55.167:8080/campervans?pageoffset=1
+curl http://18.224.55.167:8080/campervans?pricemin=9000
+curl 'http://18.224.55.167:8080/campervans?pricemin=9000&pagelimit=1'
+curl 'http://18.224.55.167:8080/campervans?near=33.64,-117.93' - note that it is long,lat
+
+
 * logs are sent to dataloghq's agent installed on the server machine

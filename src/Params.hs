@@ -13,7 +13,7 @@ newtype Latt = Latt Double deriving Show
 
 newtype Coords = Coords (Long, Latt) deriving Show
 instance ToHttpApiData Coords where
-  toQueryParam (Coords ((Long lng), (Latt lat))) = [i|#{lng},#{lat}|]
+  toQueryParam (Coords ((Long lng), (Latt lat))) = [i|#{lat},#{lng}|]
 instance FromHttpApiData Coords where
   parseQueryParam param =
     let first = T.takeWhile (/=',') param
